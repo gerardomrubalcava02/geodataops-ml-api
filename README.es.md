@@ -191,7 +191,7 @@ Resumen; el detalle está en `../geodataops-sync/`.
 | ETL → ML | Conservar el total de paginación con un offset fuera de rango en PostgreSQL | Incorporada y verificada contra PostGIS |
 | ETL → ML | Validar el dominio antes de convertir (`14000`, `0999`, `1e3`) | Incorporada, con límite de exactitud de 2^53 |
 | ETL → ML | Hacer visibles las publicaciones posteriores al arranque | `CsvRepository` con recarga y documentación del modo `auto` |
-| ML → ETL | Series anuales y covariables para modelar con datos reales | Propuesta compatible con v1 |
+| ML → ETL | Series anuales y covariables para modelar con datos reales | Retirada: un modelo con datos reales requiere replantear el problema con datos censales (ver Limitaciones) |
 | ML → ETL | La validación de ternas se omite si cambia `fuente` (`_POPULATION_CONFLICT`) | Pendiente en ETL |
 | ML → ETL | Reintentar `Path.replace` en Windows cuando hay lectores concurrentes | Pendiente en ETL |
 | ML → ETL | Reservar la entidad `99` para datos sintéticos en el contrato | Pendiente en ETL |
@@ -219,6 +219,10 @@ Resumen; el detalle está en `../geodataops-sync/`.
 ## Limitaciones conocidas
 
 - El modelo se entrenó con datos sintéticos. Con la muestra real, `fuente_datos=operativa` responde 422 de forma intencional.
+- Un modelo con datos reales **no** depende de que el ETL publique más datos. Requiere replantear el problema con datos censales y la decisión está pendiente. Preguntas abiertas:
+  - comparabilidad territorial de los municipios entre censos
+  - un baseline sin fuga de información
+  - validación espacial frente a pronóstico temporal
 - Llamada real a Claude no verificada (ver arriba).
 - Sin autenticación de usuarios, salvo el token opcional para entrenar. Un despliegue público requeriría autenticación, límites de tasa y CORS.
 - `FrameRepository` filtra en memoria. Es adecuado para miles de filas; para volúmenes grandes conviene el modo `postgres`.

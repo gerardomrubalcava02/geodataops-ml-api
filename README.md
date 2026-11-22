@@ -241,7 +241,11 @@ GEODATAOPS_ML_TEST_DATABASE_URL="host=127.0.0.1 port=5432 user=postgres dbname=p
 
 ## Limitations
 
-- The model is trained on synthetic data. With the real ETL sample, predictions return 422 on purpose. Training on real data needs annual series and covariates from the ETL; this was proposed to the ETL team.
+- The model is trained on synthetic data. With the real ETL sample, predictions return 422 on purpose.
+- A model on real data is **not** a matter of waiting for more ETL output. It requires reframing the problem around census data, and that decision is still open. Open questions:
+  - territorial comparability of municipalities between censuses
+  - a leak-free baseline
+  - spatial validation versus temporal forecasting
 - The real Anthropic integration has not been verified (no key, no authorization to use a paid service). To try it: `GEODATAOPS_ML_LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY=...`.
 - There are no user authentication, rate limits or CORS policy. A public deployment would need them.
 - The CSV repository filters in memory, which is fine for thousands of rows. Use `postgres` mode for larger data.
@@ -257,7 +261,6 @@ Cross-reviews with the ETL agent are in `../geodataops-sync/` (`revisiones_para_
   - domain validation before type conversion
   - CSV reload when the ETL publishes a new file
 - Proposed to the ETL:
-  - annual series and covariates
   - a population-triple check that is skipped when `fuente` changes
   - a Windows `replace` retry
   - reserving entity code `99` for synthetic data
