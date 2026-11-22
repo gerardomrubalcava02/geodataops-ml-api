@@ -86,3 +86,11 @@ def test_etl_versioned_inputs_are_compatible(rel):
     if not path.exists():
         pytest.skip(f"no existe {rel}")
     load_csv(path)
+
+
+def test_versioned_copy_of_etl_output_is_compatible():
+    """Runs without the sibling ETL repo (e.g. in CI): tests/data holds a verbatim copy of its output."""
+    ds = load_csv(Path(__file__).parent / "data" / "etl_jalisco_v1.csv")
+    assert ds.rows == 18 and not ds.is_synthetic
+    assert set(ds.frame["cvegeo"]) == {"14039", "14098", "14120"}
+    assert set(ds.frame["periodo"]) == {2010, 2020}
