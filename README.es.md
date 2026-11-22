@@ -1,5 +1,7 @@
 # GeoDataOps ML API
 
+> Versión en español (documentación de la fase 4). La referencia principal, actualizada en la iteración 0 con contenedor, CI y estado de verificación de cada afirmación, es el [README en inglés](README.md). Desde la iteración 0 el modelo no se versiona: ejecute `uv run geodataops-ml train` tras clonar, o use la imagen Docker, que lo entrena durante la construcción. Las 2 pruebas de PostgreSQL **no** se ejecutan en CI.
+
 Backend de la plataforma **GeoDataOps**: consulta de indicadores municipales, entrenamiento y servicio de un modelo predictivo y un asistente LLM con *tool calling* que responde con los datos disponibles.
 
 Se construyó en paralelo con [`geodataops-etl`](../geodataops-etl) (pipeline ETL y PostgreSQL/PostGIS). Ambos proyectos se integran mediante el contrato CSV v1 (`../geodataops-sync/contrato_datos.md`) y la vista `analytics.municipal_indicators`.
