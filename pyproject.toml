@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "geodataops-ml-api"
+version = "0.1.0"
+description = "API de indicadores territoriales, modelos predictivos y asistente LLM de GeoDataOps"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.115.12",
+    "uvicorn[standard]==0.34.2",
+    "pydantic==2.11.4",
+    "pydantic-settings==2.9.1",
+    "pandas==2.2.3",
+    "numpy==2.2.5",
+    "scikit-learn==1.6.1",
+    "joblib==1.5.0",
+    "httpx==0.28.1",
+    "psycopg[binary,pool]==3.2.9",
+]
+
+[project.optional-dependencies]
+ui = ["streamlit==1.45.1"]
+
+[dependency-groups]
+dev = ["pytest==8.3.5", "pytest-asyncio==0.26.0", "ruff==0.11.10"]
+
+[project.scripts]
+geodataops-ml = "geodataops_ml.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/geodataops_ml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = ["postgres: requiere un servidor PostgreSQL (GEODATAOPS_ML_TEST_DATABASE_URL)"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "ASYNC"]
