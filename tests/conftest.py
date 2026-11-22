@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import sys
 from pathlib import Path
 
 import pytest
@@ -49,3 +51,11 @@ def settings(data_dir: Path, trained_model_dir: Path) -> Settings:
 def client(settings: Settings):
     with TestClient(create_app(settings)) as c:
         yield c
+
+
+@pytest.fixture(scope="session")
+def event_loop_policy():
+    """psycopg async requiere SelectorEventLoop en Windows (igual que `geodataops-ml serve`)."""
+    if sys.platform == "win32":
+        return asyncio.WindowsSelectorEventLoopPolicy()
+    return asyncio.DefaultEventLoopPolicy()

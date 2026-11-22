@@ -1,7 +1,9 @@
 """Adaptador de fuentes: decide de dónde vienen los indicadores servidos por la API.
 
-Orden en modo `auto`: salida del ETL (contrato v1) -> fixtures propios. Así el backend
-arranca sin esperar al ETL y cambia a sus datos en cuanto existe el archivo.
+Orden en modo `auto`, evaluado AL ARRANCAR: salida del ETL (contrato v1) -> fixtures propios.
+Así el backend arranca sin esperar al ETL. Una vez elegido un CSV, las nuevas publicaciones
+de ese archivo se recargan solas; si el ETL publica por primera vez después de arrancar
+en modo fixtures, hay que reiniciar la API (ver README).
 """
 
 from __future__ import annotations
@@ -9,8 +11,8 @@ from __future__ import annotations
 import logging
 
 from geodataops_ml.config import Settings
-from geodataops_ml.data.contract import ContractError, load_csv
-from geodataops_ml.data.repository import FrameRepository, IndicatorRepository, PostgresRepository
+from geodataops_ml.data.contract import ContractError
+from geodataops_ml.data.repository import CsvRepository, IndicatorRepository, PostgresRepository
 
 log = logging.getLogger(__name__)
 
@@ -28,13 +30,13 @@ async def open_repository(settings: Settings) -> IndicatorRepository:
     if mode == "csv":
         if settings.csv_path is None:
             raise RuntimeError("data_source=csv requiere GEODATAOPS_ML_CSV_PATH")
-        return FrameRepository(load_csv(settings.csv_path), kind="csv")
+        return CsvRepository(settings.csv_path, kind="csv")
 
     if mode in ("auto", "etl_csv"):
         path = settings.etl_csv_path
         if path.exists():
             try:
-                return FrameRepository(load_csv(path), kind="etl_csv")
+                return CsvRepository(path, kind="etl_csv")
             except ContractError:
                 if mode == "etl_csv":
                     raise
@@ -44,4 +46,4 @@ async def open_repository(settings: Settings) -> IndicatorRepository:
         else:
             log.warning("No existe %s; se usan fixtures propios", path)
 
-    return FrameRepository(load_csv(settings.fixture_csv_path), kind="fixtures")
+    return CsvRepository(settings.fixture_csv_path, kind="fixtures")

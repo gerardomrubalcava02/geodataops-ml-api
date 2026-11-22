@@ -1,17 +1,25 @@
 """Repositorios de indicadores. La API depende del protocolo, no de la fuente.
 
-- FrameRepository: datos en memoria validados con el contrato (CSV del ETL o fixtures).
+- FrameRepository: datos en memoria validados con el contrato.
+- CsvRepository: FrameRepository que recarga el CSV cuando el productor lo reemplaza.
 - PostgresRepository: lee la vista `analytics.municipal_indicators` del ETL con psycopg async.
 """
 
 from __future__ import annotations
 
+import asyncio
+import logging
+import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Protocol
 
 import pandas as pd
+from anyio import to_thread
 
-from geodataops_ml.data.contract import COLUMNS, SYNTHETIC_MARKERS, LoadedDataset
+from geodataops_ml.data.contract import COLUMNS, SYNTHETIC_MARKERS, ContractError, LoadedDataset, load_csv
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -48,16 +56,24 @@ class FrameRepository:
     para el MVP y sin I/O, por lo que no bloquea el event loop de forma apreciable."""
 
     def __init__(self, dataset: LoadedDataset, kind: str):
+        self._kind = kind
+        self._set(dataset)
+
+    def _set(self, dataset: LoadedDataset, **extra: Any) -> None:
         self._df = dataset.frame
         self.info = SourceInfo(
-            kind=kind,
+            kind=self._kind,
             location=dataset.source,
             is_synthetic=dataset.is_synthetic,
             sha256=dataset.sha256,
-            extra={"filas": dataset.rows},
+            extra={"filas": dataset.rows, **extra},
         )
 
+    async def _refresh(self) -> None:
+        return None
+
     async def observations(self, q: ObservationQuery) -> tuple[list[dict[str, Any]], int]:
+        await self._refresh()
         df = self._df
         mask = pd.Series(True, index=df.index)
         if q.cvegeo:
@@ -73,6 +89,7 @@ class FrameRepository:
         return page.loc[:, list(COLUMNS)].to_dict(orient="records"), len(hits)
 
     async def municipios(self) -> list[dict[str, Any]]:
+        await self._refresh()
         g = self._df.groupby("cvegeo")
         out = pd.DataFrame(
             {
@@ -86,6 +103,7 @@ class FrameRepository:
         return out.to_dict(orient="records")
 
     async def catalog(self) -> list[dict[str, Any]]:
+        await self._refresh()
         g = self._df.groupby(["indicador", "unidad"])
         out = pd.DataFrame(
             {
@@ -98,10 +116,50 @@ class FrameRepository:
         return out.to_dict(orient="records")
 
     async def frame(self) -> pd.DataFrame:
+        await self._refresh()
         return self._df.copy()
 
     async def close(self) -> None:
         return None
+
+
+class CsvRepository(FrameRepository):
+    """Recarga el CSV cuando cambian su mtime o tamaño (revisión ETL #4).
+
+    El ETL reemplaza el archivo atómicamente, así que un `stat()` por solicitud basta para
+    detectar una publicación. Si la nueva versión incumple el contrato se conserva la
+    anterior y el error queda visible en /salud (`fuente_datos.extra.error_recarga`).
+    """
+
+    def __init__(self, path: Path, kind: str):
+        self._path = path
+        self._sig = self._stat()
+        self._lock = asyncio.Lock()
+        super().__init__(load_csv(path), kind)
+
+    def _stat(self) -> tuple[int, int] | None:
+        try:
+            st = os.stat(self._path)
+        except FileNotFoundError:
+            return None
+        return st.st_mtime_ns, st.st_size
+
+    async def _refresh(self) -> None:
+        sig = self._stat()
+        if sig is None or sig == self._sig:
+            return
+        async with self._lock:
+            if sig == self._sig:
+                return
+            self._sig = sig
+            try:
+                dataset = await to_thread.run_sync(load_csv, self._path)
+            except (ContractError, OSError) as exc:
+                log.error("Recarga rechazada, se conserva la versión anterior: %s", exc)
+                self.info.extra["error_recarga"] = str(exc)[:500]
+                return
+            self._set(dataset, recargado=True)
+            log.info("CSV recargado: %s (%s filas)", self._path, dataset.rows)
 
 
 class PostgresRepository:

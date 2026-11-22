@@ -143,3 +143,22 @@ def test_auto_source_falls_back_when_etl_breaks_contract(data_dir, trained_model
                       etl_csv_path=broken, fixture_csv_path=data_dir / "fixture.csv")
     with TestClient(create_app(s)) as c:
         assert c.get("/api/v1/salud").json()["fuente_datos"]["tipo"] == "fixtures"
+
+
+def test_csv_source_reloads_when_producer_replaces_file(data_dir, trained_model_dir, tmp_path):
+    """Revisión ETL #4: una nueva publicación del CSV se sirve sin reiniciar; una inválida no."""
+    header = "cvegeo,periodo,indicador,valor,unidad,fuente\n"
+    csv = tmp_path / "etl.csv"
+    csv.write_text(header + "14039,2010,poblacion_total,1495189,personas,INEGI\n", "utf-8")
+    s = make_settings(data_dir, trained_model_dir, data_source="etl_csv", etl_csv_path=csv)
+    with TestClient(create_app(s)) as c:
+        assert c.get("/api/v1/observaciones").json()["total"] == 1
+        tmp = tmp_path / "etl.tmp"
+        tmp.write_text(header + "14039,2010,poblacion_total,1495189,personas,INEGI\n"
+                       "14039,2020,poblacion_total,1385629,personas,INEGI\n", "utf-8")
+        tmp.replace(csv)  # reemplazo atómico, como el ETL
+        assert c.get("/api/v1/observaciones").json()["total"] == 2
+        csv.write_text("cvegeo,valor\nroto,1\n", "utf-8")
+        assert c.get("/api/v1/observaciones").json()["total"] == 2  # se conserva la versión válida
+        extra = c.get("/api/v1/salud").json()["fuente_datos"]["extra"]
+        assert "cabecera" in extra["error_recarga"]
