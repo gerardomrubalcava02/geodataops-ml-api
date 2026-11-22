@@ -52,6 +52,8 @@ def main() -> int:
     ap.add_argument("--wait", type=float, default=60, help="seconds to wait for the API to come up")
     args = ap.parse_args()
     base = args.base_url.rstrip("/")
+    if hasattr(sys.stdout, "reconfigure"):  # Windows consoles default to cp1252
+        sys.stdout.reconfigure(encoding="utf-8")
 
     deadline = time.monotonic() + args.wait
     while True:
