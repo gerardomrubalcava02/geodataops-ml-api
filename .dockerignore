@@ -1,0 +1,14 @@
+.git
+.github
+.venv
+.pgdata
+.pytest_cache
+.pytest_tmp
+.ruff_cache
+**/__pycache__
+artifacts/models/*
+!artifacts/models/.gitkeep
+tests
+ui
+scripts
+.env
