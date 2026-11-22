@@ -52,7 +52,7 @@ def etl_database():
             for f in features:
                 conn.execute(
                     "INSERT INTO staging.municipalities (dataset, cvegeo, name, geometry, last_run_id) VALUES "
-                    "('jalisco', %s, %s, ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326)), %s)",
+                    "('jalisco', %s, %s, ST_Multi(ST_Transform(ST_GeomFromGeoJSON(%s), 4326)), %s)",
                     (f["properties"]["cvegeo"], f["properties"]["nomgeo"], json.dumps(f["geometry"]), run_id))
             with conn.cursor() as cur:
                 cur.executemany(

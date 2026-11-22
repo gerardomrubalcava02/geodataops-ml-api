@@ -68,9 +68,11 @@ def _serve(args: argparse.Namespace) -> int:
     config = uvicorn.Config(
         "geodataops_ml.api.app:create_app", factory=True, host=args.host, port=args.port, loop="none"
     )
-    # psycopg async no admite el ProactorEventLoop (predeterminado en Windows): se usa
-    # SelectorEventLoop en todas las plataformas para que el modo PostgreSQL funcione.
-    asyncio.run(uvicorn.Server(config).serve(), loop_factory=asyncio.SelectorEventLoop)
+    # psycopg async no admite el ProactorEventLoop, predeterminado en Windows. Solo ahí se
+    # fuerza SelectorEventLoop; en Linux/macOS se usa el loop por defecto de asyncio (que ya
+    # es un selector loop). loop="none" evita que uvicorn instale uvloop por su cuenta.
+    loop_factory = asyncio.SelectorEventLoop if sys.platform == "win32" else None
+    asyncio.run(uvicorn.Server(config).serve(), loop_factory=loop_factory)
     return 0
 
 

@@ -3,7 +3,9 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .ruff_cache/
-artifacts/models/*.joblib
+# Modelos: se generan con `geodataops-ml train` (o en el build de Docker); no se versionan.
+artifacts/models/*
+!artifacts/models/.gitkeep
 .env
 .pgdata/
 .pytest_tmp/
