@@ -1,5 +1,7 @@
 # GeoDataOps ML API
 
+[![CI](https://github.com/gerardomrubalcava02/geodataops-ml-api/actions/workflows/ci.yml/badge.svg)](https://github.com/gerardomrubalcava02/geodataops-ml-api/actions/workflows/ci.yml)
+
 *[Versión en español](README.es.md)*
 
 Backend service of the **GeoDataOps** platform. It serves Mexican municipal indicators produced by a separate ETL project, trains and serves a population-growth model with scikit-learn, and exposes a tool-calling LLM assistant whose answers come only from the data the API serves.
@@ -107,7 +109,7 @@ All settings are environment variables with the `GEODATAOPS_ML_` prefix; a `.env
 Requires [uv](https://docs.astral.sh/uv/), which installs Python 3.12 if needed.
 
 ```bash
-git clone <repo-url> geodataops-ml-api && cd geodataops-ml-api
+git clone https://github.com/gerardomrubalcava02/geodataops-ml-api.git && cd geodataops-ml-api
 uv sync --frozen
 uv run geodataops-ml train          # ~10 s; models are not committed
 uv run geodataops-ml serve --port 8000
@@ -224,6 +226,12 @@ The test suite covers:
 **CI** (`.github/workflows/ci.yml`) runs on every push to `main` and on every pull request:
 1. **Lint and tests.** `uv sync --frozen`, `ruff check`, then `pytest -m "not postgres"`. The 2 PostgreSQL tests are **deselected, not passed**.
 2. **Container.** Builds the image, checks it runs as non-root, then starts two containers: default fixtures, and the real ETL sample mounted from `tests/data/`. It runs `scripts/smoke_http.py` against each over real HTTP and waits for the Docker health check.
+
+First verified CI run, on pull request #1: [run 45054174773](https://github.com/gerardomrubalcava02/geodataops-ml-api/actions/runs/45054174773).
+- Lint: ruff clean. Tests: 57 passed, 3 skipped (need the sibling ETL repo), 2 deselected (`postgres`).
+- Container: built on CPython 3.12.16 and runs as uid 10001. Docker health status reaches `healthy`.
+- Smoke test: passed in fixtures mode and with the real ETL sample, including the 422.
+- Cross-platform reproducibility: the model trained inside the image matched the local Windows run, with the same data hash `5c4f7e89` and the same test MAE.
 
 PostgreSQL integration tests (manual, not in CI) need a PostGIS server where the user can create databases. They also need the sibling `geodataops-etl` checkout for `schema.sql`.
 
