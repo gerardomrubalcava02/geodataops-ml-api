@@ -100,6 +100,10 @@ def _cv_mae(est: BaseEstimator, X: pd.DataFrame, y: pd.Series, folds) -> tuple[f
     return float(np.mean(scores)), float(np.std(scores))
 
 
+def _year_range(df: pd.DataFrame) -> list[int]:
+    return [int(df["periodo_objetivo"].min()), int(df["periodo_objetivo"].max())]
+
+
 @dataclass
 class TrainResult:
     model: BaseEstimator
@@ -151,8 +155,8 @@ def train(frame: pd.DataFrame, config: TrainConfig | None = None) -> TrainResult
         "modelo_seleccionado": best,
         "criterio_seleccion": "menor MAE medio en CV temporal de ventana creciente (solo entrenamiento)",
         "particion": {
-            "anios_objetivo_entrenamiento": [int(train_df["periodo_objetivo"].min()), int(train_df["periodo_objetivo"].max())],
-            "anios_objetivo_prueba": [int(test_df["periodo_objetivo"].min()), int(test_df["periodo_objetivo"].max())],
+            "anios_objetivo_entrenamiento": _year_range(train_df),
+            "anios_objetivo_prueba": _year_range(test_df),
             "filas_entrenamiento": len(train_df),
             "filas_prueba": len(test_df),
             "municipios": int(table["cvegeo"].nunique()),

@@ -164,16 +164,19 @@ class PostgresRepository:
             where.append("periodo <= %(hasta)s")
             params["hasta"] = q.periodo_hasta
         cond = "".join(f" AND {w}" for w in where)
-        rows = await self._fetch(
-            "SELECT cvegeo, periodo::int AS periodo, indicador, valor::float8 AS valor, unidad,"
-            " fuente, count(*) OVER () AS _total "
-            f"{self._BASE}{cond} ORDER BY cvegeo, periodo, indicador"
-            " LIMIT %(limit)s OFFSET %(offset)s",
-            {**params, "limit": q.limit, "offset": q.offset},
-        )
-        total = rows[0].pop("_total") if rows else 0
-        for r in rows:
-            r.pop("_total", None)
+        # El total se calcula aparte: con count(*) OVER () una página vacía (offset > total)
+        # devolvería 0 y rompería la paridad con FrameRepository (revisión ETL #2).
+        async with self._pool.connection() as conn:
+            base = {"dataset": self._dataset, **params}
+            cur = await conn.execute(f"SELECT count(*)::int AS n {self._BASE}{cond}", base)
+            total = (await cur.fetchone())["n"]
+            cur = await conn.execute(
+                "SELECT cvegeo, periodo::int AS periodo, indicador, valor::float8 AS valor,"
+                f" unidad, fuente {self._BASE}{cond} ORDER BY cvegeo, periodo, indicador"
+                " LIMIT %(limit)s OFFSET %(offset)s",
+                {**base, "limit": q.limit, "offset": q.offset},
+            )
+            rows = await cur.fetchall()
         return rows, int(total)
 
     async def municipios(self) -> list[dict[str, Any]]:

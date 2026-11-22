@@ -7,6 +7,7 @@ y reporta los errores por fila para que el productor pueda corregirlos.
 from __future__ import annotations
 
 import hashlib
+import io
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -97,8 +98,10 @@ def load_csv(path: Path) -> LoadedDataset:
     content = path.read_bytes()
     if content.startswith(b"\xef\xbb\xbf"):
         raise ContractError(str(path), ["el archivo tiene BOM; el contrato exige UTF-8 sin BOM"])
-    raw = pd.read_csv(path, dtype=str, keep_default_na=False, encoding="utf-8")
-    raw = raw.replace("", np.nan)
+    # Una sola lectura: huella y DataFrame provienen de los mismos bytes aunque el
+    # productor reemplace el archivo entre operaciones (revisión ETL #1).
+    raw = pd.read_csv(io.BytesIO(content), dtype=str, keep_default_na=False, encoding="utf-8")
+    raw = raw.where(raw != "", np.nan)
     frame = validate_frame(raw, source=str(path))
     return LoadedDataset(
         frame=frame,

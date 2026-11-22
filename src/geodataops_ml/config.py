@@ -37,13 +37,18 @@ class Settings(BaseSettings):
     )
 
     # LLM.
-    llm_provider: Literal["none", "anthropic", "openai_compatible"] = "none"
-    llm_model: str = "claude-sonnet-5-5"
+    # "none" desactiva /chat (503). "anthropic" usa el SDK oficial; la API key se toma de
+    # GEODATAOPS_ML_LLM_API_KEY o, si no se define, de las credenciales estándar del SDK.
+    llm_provider: Literal["none", "anthropic"] = "none"
+    llm_model: str = "claude-opus-5-5"
+    llm_effort: Literal["low", "medium", "high"] = "low"
     llm_api_key: SecretStr | None = None
-    llm_base_url: str | None = None
-    llm_timeout_s: float = Field(default=30.0, gt=0, le=300)
-    llm_max_tool_rounds: int = Field(default=4, ge=1, le=10)
-    llm_max_tokens: int = Field(default=1024, ge=64, le=8192)
+    llm_request_timeout_s: float = Field(default=60.0, gt=0, le=600)
+    llm_total_timeout_s: float = Field(default=120.0, gt=0, le=900)
+    llm_tool_timeout_s: float = Field(default=10.0, gt=0, le=120)
+    llm_max_tool_rounds: int = Field(default=5, ge=1, le=10)
+    llm_max_tokens: int = Field(default=16000, ge=256, le=64000)
+    llm_server_fallbacks: bool = True
 
 
 @lru_cache
